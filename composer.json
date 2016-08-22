@@ -1,0 +1,9 @@
+{
+  "name": "flowconcept/views_list_sort",
+  "description": "Allows views to be sorted by a list field's allowed values.",
+  "version": "master",
+  "type": "drupal-module",
+  "license": "GPL-2.0+",
+  "minimum-stability": "dev",
+  "require": { }
+}
