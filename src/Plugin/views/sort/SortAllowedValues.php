@@ -1,10 +1,5 @@
 <?php
 
-/**
- * @file
- * Definition of Drupal\views_list_sort\Plugin\views\sort\SortAllowedValues.
- */
-
 namespace Drupal\views_list_sort\Plugin\views\sort;
 
 use Drupal\Core\Database\Database;
@@ -13,9 +8,7 @@ use Drupal\views\FieldAPIHandlerTrait;
 use Drupal\views\Plugin\views\sort\SortPluginBase;
 
 /**
- * Basic sort handler for dates.
- *
- * This handler enables sorting by time instead of complete date.
+ * Sort handler for fields with allowed_values.
  *
  * @ingroup views_sort_handlers
  *
@@ -31,6 +24,7 @@ class SortAllowedValues extends SortPluginBase {
   protected function defineOptions() {
     $options = parent::defineOptions();
     $options['allowed_values'] = array('default' => 0);
+    $options['null_heavy'] = array('default' => 0);
     return $options;
   }
 
@@ -45,10 +39,17 @@ class SortAllowedValues extends SortPluginBase {
       '#options' => array(t('No'), t('Yes')),
       '#default_value' => $this->options['allowed_values'],
     );
+    $form['null_heavy'] = array(
+      '#type' => 'radios',
+      '#title' => t('Treat null values as heavier than the allowed values'),
+      '#options' => array(t('No'), t('Yes')),
+      '#default_value' => $this->options['null_heavy'],
+    );
   }
 
   /**
    * Called to add the sort to a query.
+   *
    * Sort by index of allowed values using sql FIELD function.
    *
    * @see http://dev.mysql.com/doc/refman/5.5/en/string-functions.html#function_field
@@ -64,7 +65,16 @@ class SortAllowedValues extends SortPluginBase {
     $allowed_values = array_keys(options_allowed_values($field_storage));
     $connection = Database::getConnection();
 
-    $formula = 'FIELD(' . $this->tableAlias .'.'. $this->field .', '. implode(', ', array_map(array($connection, 'quote'), $allowed_values)) .')';
+    $formula = '';
+    // Reverse the values returned by the FIELD function and the allowed values
+    // so '0' is heavier than the rest.
+    if ($this->options['null_heavy']) {
+      $allowed_values = array_reverse($allowed_values);
+      $formula .= '-1 * ';
+    }
+
+    $formula .= 'FIELD(' . $this->tableAlias . '.' . $this->field . ', ' . implode(', ', array_map(array($connection, 'quote'), $allowed_values)) . ')';
     $this->query->addOrderBy(NULL, $formula, $this->options['order'], $this->tableAlias . '_' . $this->field . '_allowed_values');
   }
+
 }
